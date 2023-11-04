@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  name           String?
+  accessToken    String
+  refreshToken   String
+  activationLink String    @unique
+  isActive       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  Storages       Storage[]
+}
+
+model Storage {
+  id          String        @id @default(uuid())
+  name        String
+  isEmpty     Boolean       @default(true)
+  isShared    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  StorageItem StorageItem[]
+  User        User?         @relation(fields: [userId], references: [id])
+  userId      String?
+}
+
+model StorageItem {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  base64Content String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  storage       Storage  @relation(fields: [storageId], references: [id])
+  storageId     String
+}
