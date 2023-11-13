@@ -51,7 +51,7 @@ export class EmailService {
   async isEmailConfirmed(email: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
       where: {
-        email,
+        email: email,
       },
     });
     if (!user) {

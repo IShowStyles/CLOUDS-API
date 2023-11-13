@@ -1,54 +1,44 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 
-import {
-  GetCurrentUser,
-  GetCurrentUserEmail,
-  Public,
-} from '../common/decorators';
+import { Public } from '../common/decorators';
 import { RtGuard } from '../common/guards';
 import { AuthService } from './auth.service';
 import { AuthDto } from './dto';
-import { Tokens } from './types';
+import { signupLocalType, Tokens } from './types';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) {
+  }
 
   @Public()
   @Post('local/signup')
   @HttpCode(HttpStatus.CREATED)
-  signupLocal(@Body() dto: AuthDto): Promise<Tokens> {
+  signupLocal(@Body() dto: AuthDto): Promise<signupLocalType> {
     return this.authService.signupLocal(dto);
   }
 
   @Public()
   @Post('local/signin')
   @HttpCode(HttpStatus.OK)
-  signinLocal(@Body() dto: AuthDto): Promise<Tokens> {
-    return this.authService.signinLocal(dto);
+  async signinLocal(@Body() dto: AuthDto): Promise<signupLocalType> {
+    return await this.authService.signinLocal(dto);
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(@GetCurrentUserEmail() email: string): Promise<boolean> {
-    return this.authService.logout(email);
+  async logout(@Body('email') email: string): Promise<boolean> {
+    return await this.authService.logout(email);
   }
 
   @Public()
   @UseGuards(RtGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  refreshTokens(
-    @GetCurrentUserEmail() email: string,
-    @GetCurrentUser('refreshToken') refreshToken: string,
+  async refreshTokens(
+    @Body('email') email: string,
+    @Body('refreshToken') refreshToken: string,
   ): Promise<Tokens> {
-    return this.authService.refreshTokens(email, refreshToken);
+    return await this.authService.refreshTokens(email, refreshToken);
   }
 }

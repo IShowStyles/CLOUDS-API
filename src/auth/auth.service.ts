@@ -5,7 +5,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import * as argon from 'argon2';
 import { PrismaService } from '../common/db/prisma.service';
 import { AuthDto } from './dto';
-import { JwtPayload, Tokens } from './types';
+import { JwtPayload, signupLocalType, Tokens } from './types';
 import { EmailService } from '../email/email.service';
 
 @Injectable()
@@ -15,9 +15,10 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
     private emailService: EmailService,
-  ) {}
+  ) {
+  }
 
-  async signupLocal(dto: AuthDto): Promise<Tokens> {
+  async signupLocal(dto: AuthDto): Promise<signupLocalType> {
     const hash = await argon.hash(dto.password);
     const activationLink = Math.random().toString(36).substring(2);
     const user = await this.prisma.user
@@ -38,13 +39,20 @@ export class AuthService {
         }
         throw error;
       });
-    const tokens = await this.getTokens(user.name, user.email);
+    const tokens = await this.getTokens(user.name, user.email,user.id);
     await this.updateRtHash(user.id, tokens.refresh_token);
     await this.emailService.sendConfirmationLink(user.email);
-    return tokens;
+    return {
+      tokens: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+      },
+      isActive: user.isActive,
+      email: user.email,
+    };
   }
 
-  async signinLocal(dto: AuthDto): Promise<Tokens & { isActive: boolean }> {
+  async signinLocal(dto: AuthDto): Promise<signupLocalType> {
     const user = await this.prisma.user.findUnique({
       where: {
         email: dto.email,
@@ -53,9 +61,16 @@ export class AuthService {
     if (!user) throw new ForbiddenException('Access Denied');
     const passwordMatches = await argon.verify(user.accessToken, dto.password);
     if (!passwordMatches) throw new ForbiddenException('Access Denied');
-    const tokens = await this.getTokens(user.name, user.email);
+    const tokens = await this.getTokens(user.name, user.email,user.id);
     await this.updateRtHash(user.id, tokens.refresh_token);
-    return { ...tokens, isActive: user.isActive };
+    return {
+      tokens: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+      },
+      isActive: user.isActive,
+      email: user.email,
+    };
   }
 
   async logout(userId: string): Promise<boolean> {
@@ -83,7 +98,7 @@ export class AuthService {
       throw new ForbiddenException('Access Denied');
     const rtMatches = await argon.verify(user.refreshToken, rt);
     if (!rtMatches) throw new ForbiddenException('Access Denied');
-    const tokens = await this.getTokens(user.name, user.email);
+    const tokens = await this.getTokens(user.name, user.email, user.id);
     await this.updateRtHash(user.id, tokens.refresh_token);
     return tokens;
   }
@@ -100,8 +115,9 @@ export class AuthService {
     });
   }
 
-  async getTokens(name: string, email: string): Promise<Tokens> {
+  async getTokens(name: string, email: string, id: string): Promise<Tokens> {
     const jwtPayload: JwtPayload = {
+      id: id,
       email: email,
       name: name,
     };
@@ -109,11 +125,10 @@ export class AuthService {
     const [at, rt] = await Promise.all([
       this.jwtService.signAsync(jwtPayload, {
         secret: this.config.get<string>('SECRET_JWT_ACCESS_TOKEN'),
-        expiresIn: '15m',
+        expiresIn: '360m',
       }),
       this.jwtService.signAsync(jwtPayload, {
         secret: this.config.get<string>('SECRET_JWT_REFRESH_TOKEN'),
-        expiresIn: '7d',
       }),
     ]);
 

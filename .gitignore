@@ -3,6 +3,10 @@
 /node_modules
 /data
 /cert
+dist
+node_modules
+data
+cert
 # Logs
 logs
 *.log

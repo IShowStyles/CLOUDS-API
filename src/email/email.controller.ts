@@ -7,8 +7,10 @@ export class EmailController {
   constructor(private readonly emailService: EmailService) {}
 
   @Get('get-confirmation-link')
-  async sendConfirmationEmail(@GetParamEmail() email: string): Promise<void> {
-    return await this.emailService.sendConfirmationLink(email);
+  async sendConfirmationEmail(@Query() emailQuery:{
+    email: string;
+  }): Promise<void> {
+    return await this.emailService.sendConfirmationLink(emailQuery.email);
   }
 
   @Get('confirm-email')
@@ -18,7 +20,7 @@ export class EmailController {
   }
 
   @Get('is-confirmed')
-  async isEmailConfirmed(@GetParamEmail() email: string): Promise<boolean> {
-    return await this.emailService.isEmailConfirmed(email);
+  async isEmailConfirmed(@Query() emailQuery:{ email: string; }): Promise<boolean> {
+    return await this.emailService.isEmailConfirmed(emailQuery.email);
   }
 }
