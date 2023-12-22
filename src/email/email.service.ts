@@ -77,5 +77,6 @@ export class EmailService {
         isActive: true,
       },
     });
+    return updatedUser.isActive;
   }
 }
